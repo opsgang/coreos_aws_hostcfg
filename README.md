@@ -1,10 +1,12 @@
 # coreos\_aws\_hostcfg
 
+_... container adds core service cfgs and user files to a coreos host_
+
 ## building
 
 **master branch built at shippable.com**
 
-[![Run Status](https://api.shippable.com/projects/589464f08d80360f008b754e/badge?branch=master)](https://api.shippable.com/projects/589464f08d80360f008b754e/badge?branch=master)
+[![Run Status](https://api.shippable.com/projects/58e3c53abefe150700ec299b/badge?branch=master)](https://api.shippable.com/projects/58e3c53abefe150700ec299b/badge?branch=master)
 
 ```bash
 git clone https://github.com/opsgang/coreos_aws_hostcfg.git
@@ -20,4 +22,3 @@ docker pull opsgang/coreos_aws_hostcfg:stable # or use the tag you prefer
 
 ## running
 
-TODO
