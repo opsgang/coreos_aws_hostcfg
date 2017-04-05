@@ -14,5 +14,4 @@ prepares /home/core;          \
 
 COPY assets /assets
 
-RUN    chmod a+x /assets/scripts/*  \
-    && /assets/scripts/core_user.sh
+RUN /bin/bash /assets/scripts/core_user.sh
