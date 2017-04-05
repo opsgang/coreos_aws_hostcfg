@@ -1,0 +1,5 @@
+# list of credstash dynamodb tables
+# ... values in later tables take precedence.
+credstash-eil_shared
+credstash-$PRODUCT
+credstash-$PRODUCT-$ENV
