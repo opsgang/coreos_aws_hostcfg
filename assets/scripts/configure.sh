@@ -30,3 +30,11 @@ chown -R core:core /home/core
 
 i "... making all /home/core/bin non .inc files executable"
 find /home/core/bin -type f ! -name '*.inc' -exec chmod a+x {} \;
+
+i "... get instance info"
+if ! /home/core/bin/instance_info
+then
+	e "... with out instance info, can't generate any env or host specific cfg."
+	e "Failing."
+	exit 1
+fi

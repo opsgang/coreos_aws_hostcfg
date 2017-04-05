@@ -13,8 +13,8 @@ EnvironmentFile=-/etc/custom/docker_image_versions
 ExecStartPre=-/usr/bin/docker kill ${_C}
 ExecStartPre=-/usr/bin/docker rm ${_C}
 ExecStartPre=/usr/bin/docker pull ${_DI}
-ExecStart=/bin/bash -c "
-docker run
+ExecStart=/bin/bash -c " \
+docker run                           \
     --name instance_info             \
     --privileged                     \
     -v /home/core/bin:/home/core/bin \
