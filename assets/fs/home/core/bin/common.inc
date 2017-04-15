@@ -15,7 +15,7 @@ FILES_TO_SRC="
     /etc/custom/docker_image_versions
 "
 
-function _check_var_defined() {
+_check_var_defined() {
     local var_name="$1"
     local var_val="${!var_name}"
     if [[ -z $var_val ]]; then
@@ -23,7 +23,7 @@ function _check_var_defined() {
     fi
 }
 
-function required_vars_help() {
+required_vars_help() {
     cat <<EOM
 usage: required_vars "<var_name1> <var_name2> ..."
 ... return false if any var_name is undeclared, undefined or empty.
@@ -31,7 +31,7 @@ EOM
 
 }
 
-function required_vars() {
+required_vars() {
     local rc=0
     local required_vars="$1"
     local this_var
@@ -46,7 +46,7 @@ function required_vars() {
     return $rc
 }
 
-function container_as_cmd_help() {
+container_as_cmd_help() {
     cat <<EOM
 usage: container_as_cmd <cmd to emulate> <arg1> <arg2> ...
 ... wrapper to run container as if it were a binary.
@@ -68,7 +68,7 @@ EOM
 # CONTAINER_ENV="SOME_VAR_FROM_MY_ENV OTHER_VAR_FROM_ENV"
 # - e.g. list of vars to pass to docker with vals from calling env.
 #
-function container_as_cmd() {
+container_as_cmd() {
 
     local cmd_args="$@"
     local env_opts=""
@@ -83,7 +83,7 @@ function container_as_cmd() {
     sudo -E docker run --name $CONTAINER_NAME --rm $env_opts $TAGGED_IMG $cmd_args
 }
 
-function _container_env_str() {
+_container_env_str() {
     for varname in $CONTAINER_ENV; do
         str="$str --env $varname"
     done
@@ -92,11 +92,11 @@ function _container_env_str() {
 }
 
 # ... print msgs to console
-function e() {
+e() {
     echo "ERROR $SC: $*" >&2
 }
 
-function i() {
+i() {
     echo "INFO $SC: $*"
 }
 
