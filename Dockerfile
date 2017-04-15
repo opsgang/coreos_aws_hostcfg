@@ -6,10 +6,10 @@ LABEL \
       name="opsgang/coreos_aws_hostcfg"  \
       vendor="sortuniq"                  \
       description="\
-... adds common services;     \
-gets instance info;           \
-gets secrets from credstash ; \
-prepares /home/core;          \
+... adds common services;\n\
+gets instance info;\n\
+gets secrets from credstash;\n\
+prepares /home/core;\n\
 "
 
 COPY assets /assets

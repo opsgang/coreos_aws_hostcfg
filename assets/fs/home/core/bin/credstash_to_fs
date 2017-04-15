@@ -1,0 +1,105 @@
+#!/bin/bash
+# vim: et smartindent sr sw=4 ts=4:
+#
+# credstash_to_fs
+#
+# ... for a list of tables under /etc/custom/.credstash/tables:
+# - creates a composite .credstash.json under /etc/custom/.credstash.json .
+# - ignores any tables that don't exist (not an error)
+#
+# The list of tables can contain env vars which are available to the script
+# e.g. bin/common.inc makes the vars in instance_info available.
+#
+# Individual secrets files are stored under /etc/custom/.credstash/<table_name>.json
+#
+# Script requires jq 1.5+
+#
+. /home/core/bin/common.inc
+
+CFG_DIR=/etc/custom
+CREDSTASH_DIR=$CFG_DIR/.credstash
+MERGED_JSON=$CFG_DIR/.credstash.json
+TABLES_FILE=$CREDSTASH_DIR/tables
+table_exists() {
+    table="$1"
+    if ! echo "$EXISTING_TABLES" | grep "^${table}$" >/dev/null 2>&1
+    then
+        echo "$0 WARNING: dynamodb $table for credstash does not exist. Skipping." >&2
+        return 1
+    else
+        return 0
+    fi
+}
+
+valid_vars_in_table_file() {
+    file_vars=$(                                    \
+        cat $TABLES_FILE                            \
+        | grep -Po '\$\{?[_a-zA-Z][_0-9a-zA-Z]+\}?' \
+        | sort | uniq                               \
+        | sed -e 's/[${}]//g'                       \
+    )
+
+    required_vars "$file_vars"
+}
+
+# ... validate
+if ! jq --version >/dev/null 2>&1
+then
+    echo "$0 ERROR: jq is required, but not found in $PATH."
+    exit 1
+fi
+
+if [[ ! -r $TABLES_FILE ]]; then
+    echo "$0 INFO: no credstash tables found ($TABLES_FILE not readable file)"
+    echo "         ... nothing to do"
+    exit 0
+fi
+
+# ... if any vars in tables file, make sure they are defined
+valid_vars_in_table_file || exit 1
+
+# ... rebase env
+echo "$0 INFO: ... deleting previously generated credstash .json"
+rm -rf $MERGED_JSON $CREDSTASH_DIR/*.json
+
+# ... EXISTING_TABLES: used by table_exists()
+EXISTING_TABLES="$(
+    set -o pipefail; \
+    aws --region $AWS_DEFAULT_REGION dynamodb list-tables --output text \
+    | awk {'print $NF'}
+)"
+# ... fail if can't list tables
+[[ $? -ne 0 ]] && exit 1
+
+TABLES_LIST=$(echo $(eval echo $(cat $TABLES_FILE | grep -v '^ *#')))
+
+rc=0
+count=1
+for table in $TABLES_LIST; do
+
+    # ... skip unless table exists
+    if ! table_exists "$table"; then continue; fi
+
+    table_json=$CREDSTASH_DIR/$count-$table.json
+    secrets=$(credstash --region $AWS_DEFAULT_REGION --table $table getall)
+
+    if [[ $? -ne 0 ]]; then
+        rc=1
+        echo "$0 ERROR: couldn't get values for table $table"
+        continue
+    fi
+
+    echo "$0 INFO: storing secrets for table $table"
+    echo "$secrets">$table_json
+    (( count++ ))
+
+done
+
+[[ $rc -ne 0 ]] && exit 1
+
+all_table_files=$(ls -1 $CREDSTASH_DIR/*.json)
+if [[ ! -z "$all_table_files" ]]; then
+    echo "$0 INFO: combining " $all_table_files
+    jq -s 'reduce .[] as $item ({}; . * $item)' $all_table_files > $MERGED_JSON
+fi
+

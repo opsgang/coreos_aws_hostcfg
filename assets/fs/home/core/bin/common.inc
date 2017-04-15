@@ -53,8 +53,10 @@ usage: container_as_cmd <cmd to emulate> <arg1> <arg2> ...
 You must define CONTAINER_NAME and TAGGED_IMG before use.
 Optionally, CONTAINER_ENV="SOME_VAR OTHER_VAR", to pass vars from your env.
 e.g.
-    export CONTAINER_NAME=awscli; export TAGGED_IMG=awscli:0.0.1
-    container_as_cmd --region eu-west-1 ec2 describe-instances
+    export CONTAINER_ENV="AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY";
+    export CONTAINER_NAME=boo; export TAGGED_IMG=opsgang/aws_env:stable;
+    container_as_cmd aws ec2 describe-instances
+    container_as_cmd credstash -r eu-west-1 -t secrets get MY_SECRET
 EOM
 
 }

@@ -1,0 +1,119 @@
+cat functions.d/ssh
+# vim: et sr sw=4 ts=4 smartindent syntax=sh:
+# ... to be sourced
+forward_ssh_agent_help() {
+    cat <<EOM
+usage: forward_ssh_agent
+... adds all of your .ssh keys to an ssh-agent for the current shell
+EOM
+}
+
+forward_ssh_agent() {
+    local privateKey
+    echo "$0 INFO: ... looking for existing ssh agent to reuse"
+    if ! _ssh_find_agent
+    then
+        echo "$0 INFO: ... generating new agent for ssh forwarding in cluster"
+        eval $(ssh-agent)
+    fi
+
+    for privateKey in $(ls -1 $HOME/.ssh/id_* 2>/dev/null | grep -v '\.pub')
+    do
+        echo "$0 INFO: ... attempting to add key $privateKey"
+        if ! add_key "$privateKey"
+        then
+            echo "$0 WARNING: ... is the key already added to your agent?"
+        fi
+    done
+    ssh-add -l # verify your key has been added to the key-ring
+}
+
+add_key_help() {
+    cat <<EOM
+usage: add_key </path/to/private_ssh_key>
+... adds key to ssh-agent's keyring
+e.g.
+    add_key ~/.ssh/id_rsa
+EOM
+
+}
+
+add_key() {
+    local key="$1"
+    echo "... adding key $key"
+    ssh-add $key
+}
+
+################################################################################
+# functions below to discover and re-use agents are all shamelessly ripped off
+# from https://github.com/wwalker/ssh-find-agent/blob/master/ssh-find-agent.sh
+#
+# They've been stripped down to the bare essentials for agent reuse on coreos.
+#
+_find_all_ssh_agent_sockets() {
+    _SSH_AGENT_SOCKETS=`find /tmp/ -type s -name agent.\* 2> /dev/null | grep '/tmp/ssh-.*/agent.*'`
+}
+
+_test_agent_socket() {
+    local SOCKET=$1
+    SSH_AUTH_SOCK=$SOCKET ssh-add -l 2> /dev/null > /dev/null
+    result=$?
+
+    if [[ $result -eq 0 ]]
+    then
+        # contactible and has keys loaded
+        _KEY_COUNT=`SSH_AUTH_SOCK=$SOCKET ssh-add -l | wc -l | tr -d ' '`
+    fi
+
+    if [[ $result -eq 1 ]]
+    then
+        # contactible butno keys loaded
+        _KEY_COUNT=0
+    fi
+
+    if [[ ( ( $result -eq 0 ) || ( $result -eq 1 ) ) ]]
+    then
+        if [[ -n "$_LIVE_AGENT_LIST" ]]
+        then
+            _LIVE_AGENT_LIST="${_LIVE_AGENT_LIST} ${SOCKET}:$_KEY_COUNT"
+        else
+            _LIVE_AGENT_LIST="${SOCKET}:$_KEY_COUNT"
+        fi
+        return 0
+    fi
+
+    return 1
+}
+
+_find_all_agent_sockets() {
+    _LIVE_AGENT_LIST=
+    _find_all_ssh_agent_sockets
+    _find_live_ssh_agents
+    _LIVE_AGENT_LIST=$(echo $_LIVE_AGENT_LIST | tr ' ' '\n' | sort -n -t: -k 2 -k 1 | uniq)
+    _LIVE_AGENT_SOCK_LIST=()
+    printf "%s\n" "$_LIVE_AGENT_LIST" | sed -e 's/ /\n/g' | sort -n -t: -k 2 -k 1
+}
+
+_find_live_ssh_agents() {
+    for i in $_SSH_AGENT_SOCKETS
+    do
+        _test_agent_socket $i
+    done
+}
+
+_set_ssh_agent_socket() {
+    # Choose the first available socket
+    SOCK=$(_find_all_agent_sockets|tail -n 1|awk -F: '{print $1}')
+    if [ -z "$SOCK" ] ; then
+        return 1
+    fi
+    export SSH_AUTH_SOCK=$SOCK
+
+    return 0
+}
+
+_ssh_find_agent() {
+    _set_ssh_agent_socket
+    return $?
+}
+
