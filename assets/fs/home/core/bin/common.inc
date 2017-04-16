@@ -6,14 +6,17 @@
 #   - check required vars or fail.
 #   - get value from kms
 #
-export PATH=$PATH:/home/core/bin
-FUNC_DIR=/home/core/bin/functions.d
-SC="$(basename $(realpath $0))"
 
-FILES_TO_SRC="
-    /etc/custom/instance_info
-    /etc/custom/docker_image_versions
-"
+### FUNCTIONS
+
+# _set_SC(): provides $SC (abbreviated script name for log msgs)
+_set_SC() {
+    if [[ $0 =~ ^-?bash$ ]]; then
+        echo "bash"
+    else
+        basename $(realpath $0)
+    fi
+}
 
 _check_var_defined() {
     local var_name="$1"
@@ -61,15 +64,6 @@ EOM
 
 }
 
-# container_as_cmd():
-# runs docker container to emulate cmd
-# ... requires env vars to be set:
-#     CONTAINER_NAME: name to give container
-#     TAGGED_IMG: name of img to run
-# Optional:
-# CONTAINER_ENV="SOME_VAR_FROM_MY_ENV OTHER_VAR_FROM_ENV"
-# - e.g. list of vars to pass to docker with vals from calling env.
-#
 container_as_cmd() {
 
     local cmd_args="$@"
@@ -85,6 +79,7 @@ container_as_cmd() {
     sudo -E docker run --name $CONTAINER_NAME --rm $env_opts $TAGGED_IMG $cmd_args
 }
 
+# _container_env_str(): constructs --env str from list in $CONTAINER_ENV
 _container_env_str() {
     for varname in $CONTAINER_ENV; do
         str="$str --env $varname"
@@ -93,7 +88,7 @@ _container_env_str() {
     echo "$str"
 }
 
-# ... print msgs to console
+# e() / i() ... print log msg
 e() {
     echo "ERROR $SC: $*" >&2
 }
@@ -102,15 +97,29 @@ i() {
     echo "INFO $SC: $*"
 }
 
-# ... src useful stuff in to env
-for file_to_src in $FILES_TO_SRC; do
-    if [[ -r $file_to_src ]]; then
-        i "... sourcing $file_to_src"
-        . $file_to_src
-    fi
-done
+# MAIN
 
-for func_file in $(ls -1 $FUNC_DIR/* 2>/dev/null); do
-    . $func_file
-done
-unset func_file file_to_src FUNC_DIR FILES_TO_SRC
+_do_common() {
+	export PATH=$PATH:/home/core/bin
+	FUNC_DIR=/home/core/bin/functions.d
+	SC=$(_set_SC)
+	FILES_TO_SRC="
+		/etc/custom/instance_info
+		/etc/custom/versions
+	"
+
+	# ... src useful stuff in to env
+	for file_to_src in $FILES_TO_SRC; do
+		if [[ -r $file_to_src ]]; then
+			i "... sourcing $file_to_src"
+			. $file_to_src
+		fi
+	done
+
+	for func_file in $(ls -1 $FUNC_DIR/* 2>/dev/null); do
+		. $func_file
+	done
+	unset func_file file_to_src FUNC_DIR FILES_TO_SRC
+}
+
+_do_common ; unset _do_common
