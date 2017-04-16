@@ -9,8 +9,7 @@ LABEL \
 ... adds common services;\n\
 gets instance info;\n\
 gets secrets from credstash;\n\
-prepares /home/core;\n\
-"
+prepares /home/core;"
 
 COPY assets /assets
 
