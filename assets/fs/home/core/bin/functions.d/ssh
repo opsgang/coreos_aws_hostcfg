@@ -1,4 +1,3 @@
-cat functions.d/ssh
 # vim: et sr sw=4 ts=4 smartindent syntax=sh:
 # ... to be sourced
 forward_ssh_agent_help() {

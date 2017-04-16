@@ -13,7 +13,9 @@
 #       - docker network,
 #       - papertrail
 echo "INFO $0: copying all fs assets to host"
-if ! cp -a /assets/fs/* /
+# N.B - this cp won't work with any dot files directly
+# under /assets/fs ... (e.g. /assets/fs/.somefile -> failure)
+if ! cp -a --remove-destination /assets/fs/* /
 then
     echo "ERROR $0: failed to copy essential assets."
     exit 1
