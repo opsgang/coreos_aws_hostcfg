@@ -21,6 +21,9 @@ then
     exit 1
 fi
 
+# ... some assets can be user-defined and we don't want to clobber them
+cp -a -n /assets/fs-defaults/* /
+
 if ! . /home/core/bin/common.inc >/dev/null 2>&1
 then
     echo "ERROR $0: ... could not source /home/core/bin/common.inc" >&2
@@ -30,6 +33,6 @@ fi
 i "... setting core user to own files under /home/core"
 chown -R core:core /home/core
 
-i "... making all /home/core/bin non .inc files executable"
-find /home/core/bin -type f ! -name '*.inc' -exec chmod a+x {} \;
+i "... making all /home/core/bin files executable unless readme or .inc"
+find /home/core/bin -type f ! -name '*.inc' -a ! -name '*.md' -exec chmod a+x {} \;
 

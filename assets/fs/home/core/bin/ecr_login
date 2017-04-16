@@ -1,0 +1,77 @@
+#!/bin/bash
+# vim: et sr sw=4 ts=4 smartindent:
+#
+# /home/core/bin/ecr_login
+# 
+# Logs root and core users in to multiple ecrs.
+# accounts with ecr can be specified by region
+# in /etc/custom/ecr_accounts.
+#
+# This is expected to be run by a systemd timer
+# as ecr login tokens expire after a few hours.
+#
+. /home/core/bin/common.inc || exit 1
+
+# ... set DI_ECR_LOGIN in 'versions' to use custom docker image
+# to run get-login.
+# - defaults to opsgang/coreos_aws_hostcfg:stable
+. /etc/custom/versions 2>/dev/null
+
+docker_run() {
+    rc=0
+    local r="$1"   # aws region
+    local ids="$2" # ids
+
+    l=$(
+        docker run -t --name aa --rm $I \
+            aws ecr --region $r get-login \
+                --registry-ids $ids | sed -e 's/\r//g'
+    )
+    rc=$?
+
+    sudo docker rm -f aa >/dev/null 2>&1 # clean up just incase
+
+    [[ $rc -eq 0 ]] || return 1
+
+    for u in core root; do
+        i "... ecr login for user: core"
+        while read -r line; do
+            sudo -u $u $line || rc=1
+        done < <(echo "$l")
+    done
+
+    return $rc
+
+}
+
+I=${DI_ECR_LOGIN:-opsgang/coreos_aws_hostcfg:stable}
+CONTAINER_NAME=${CONTAINER_NAME:-ecr_login}
+
+f=/etc/custom/ecr_accounts
+if [[ ! -r $f ]]; then
+    e "... ecr account ids and regions must be provided:"
+    e "in $f e.g."
+    e "# $f <account_id=regionA regionB ...>"
+    e "eu-west-1=123456789012 098765432109"
+    e "us-east-2=123456789012"
+    exit 1
+fi
+
+rc=0
+# read file line at time, skipping comments or empty lines
+while read -r line; do
+    IFS== read reg ids <<< $line
+    r='^ *(#.*)?$'
+    if [[ $line =~ $r ]]; then
+        i "... skipped line [$line]"; continue
+    fi
+
+    docker_run $reg "$ids" || rc=1
+done < "$f"
+
+if [[ $rc -ne 0 ]]; then
+    e "... failed some or all desired logins to ecr"
+fi
+
+exit $rc
+
