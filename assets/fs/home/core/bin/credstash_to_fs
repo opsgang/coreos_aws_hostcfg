@@ -80,7 +80,9 @@ for table in $TABLES_LIST; do
     # ... skip unless table exists
     if ! table_exists "$table"; then continue; fi
 
-    table_json=$CREDSTASH_DIR/$count-$table.json
+    # ... account for the insanity of reducing up to 999 credstash tables ...
+    num=$(printf '%03d' $count)
+    table_json=$CREDSTASH_DIR/${num}-${table}.json
     secrets=$(credstash --region $AWS_DEFAULT_REGION --table $table getall)
 
     if [[ $? -ne 0 ]]; then
