@@ -43,7 +43,7 @@ docker_label() {
 
     [[ -z "$out" ]] && return 1
 
-    echo $out
+    echo -e "$out\n"
 }
 
 _jq_labels_val() {
