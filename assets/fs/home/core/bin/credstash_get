@@ -1,0 +1,39 @@
+# vim: et sr sw=4 ts=4 smartindent syntax=sh:
+# ... to be sourced by /home/core/bin/functions
+#
+# _help func under functions.d/credstash (sourced by common.inc)
+
+# credstash_get():
+# ... only useful if /home/core/bin/credstash_to_fs has been invoked.
+#     which should happen after instance_info is generated.
+#
+credstash_get() {
+    json=/etc/custom/.credstash.json
+    local s="$1" # secret name to look up
+
+    if [[ -z "$s" ]]; then
+        e "expects a parameter"
+        credstash_get_help
+        return 1
+    fi
+
+    if [[ ! -r $json ]]; then
+        e "no readable credstash.json at $json"
+        e ""
+        return 1
+    fi
+
+    local val=$(jq -r ".\"$s\"" $json)
+    if [[ "$val" == "null" ]]; then
+        val=""
+    fi
+
+    echo "$val"
+}
+
+if ! . /home/core/bin/common.inc >/dev/null
+then
+    echo "ERROR $0: could not source /home/core/bin/common.inc" >&2
+    exit 1
+fi
+credstash_get "$1"

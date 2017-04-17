@@ -1,0 +1,31 @@
+#!/bin/bash
+# vim: et sr sw=4 ts=4 smartindent:
+#
+# /home/core/bin/artifactory_login
+#
+# Logs root and core users in to an artifactory
+# docker registry.
+#
+# This is expected to be run by a systemd timer
+# as tokens expire after a few hours.
+#
+# see README.artifactory_login.md
+#
+#
+. /home/core/bin/common.inc || exit 1
+
+req="
+    ARTIFACTORY_USER
+    ARTIFACTORY_PASSWORD
+    ARTIFACTORY_EMAIL
+    ARTIFACTORY_URI
+"
+
+required_vars "$req" || exit 1
+
+if ! docker login --user $u --password $p --email $e
+then
+    e "... failed: $ARTIFACTORY_USER@$ARTIFACTORY_URI"
+    exit 1
+fi
+

@@ -11,8 +11,14 @@ _print_helpers() {
     # ... funcs: (non _help ones)
     local f=$(declare -f | grep -Po '^(\w+)(?= \(\))' | grep -v '_help$')
 
-    # ... funcs for which a _help func exists
-    local fh=$(declare -f | grep -Po '^(\w+)(?=_help \(\))') # funcs that have help
+    # ... cmds under /home/core/bin
+    local x=$(cd /home/core/bin && find ./ -maxdepth 1 -type f -executable | sed -e 's#\./##')
+
+    # ... combined bin cmds and shell funcs
+    f=$(echo "$f$x"| sed -e '/^$/d' | sort | uniq)
+
+    # ... funcs for which a _help func defined in here or under functions.d
+    local fh=$(declare -f | grep -Po '^(\w+)(?=_help \(\))')
 
     local func_list=$(comm -1 <(echo "$f") <(echo "$fh"))
 
