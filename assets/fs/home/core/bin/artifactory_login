@@ -12,7 +12,18 @@
 # see README.artifactory_login.md
 #
 #
-. /home/core/bin/common.inc || exit 1
+
+. /home/core/bin/common.inc >/dev/null || exit 1
+
+do_login() {
+    local host_user="$1"
+    local user=$ARTIFACTORY_USER
+    local pass="$ARTIFACTORY_PASSWORD"
+    local email="$ARTIFACTORY_URI"
+    local uri="$ARTIFACTORY_URI"
+
+    sudo -u $host_user docker login --user $user --password $pass --email $email $uri
+}
 
 req="
     ARTIFACTORY_USER
@@ -23,9 +34,13 @@ req="
 
 required_vars "$req" || exit 1
 
-if ! docker login --user $u --password $p --email $e
-then
-    e "... failed: $ARTIFACTORY_USER@$ARTIFACTORY_URI"
-    exit 1
-fi
+rc=0
+for host_user in core root; do
+    if ! do_login $host_user
+    then
+        e "... failed: $ARTIFACTORY_USER@$ARTIFACTORY_URI"
+        rc=1
+    fi
+done
 
+exit $rc

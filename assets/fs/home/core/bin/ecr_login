@@ -10,7 +10,7 @@
 # This is expected to be run by a systemd timer
 # as ecr login tokens expire after a few hours.
 #
-. /home/core/bin/common.inc || exit 1
+. /home/core/bin/common.inc >/dev/null || exit 1
 
 # ... set DI_ECR_LOGIN in 'versions' to use custom docker image
 # to run get-login.
