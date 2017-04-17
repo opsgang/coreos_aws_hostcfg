@@ -19,7 +19,7 @@ do_login() {
     local host_user="$1"
     local user=$ARTIFACTORY_USER
     local pass="$ARTIFACTORY_PASSWORD"
-    local email="$ARTIFACTORY_URI"
+    local email="${ARTIFACTORY_EMAIL:-none}"
     local uri="$ARTIFACTORY_URI"
 
     sudo -u $host_user docker login --username $user --password $pass --email $email $uri
