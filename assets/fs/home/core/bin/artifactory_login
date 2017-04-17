@@ -22,7 +22,7 @@ do_login() {
     local email="$ARTIFACTORY_URI"
     local uri="$ARTIFACTORY_URI"
 
-    sudo -u $host_user docker login --user $user --password $pass --email $email $uri
+    sudo -u $host_user docker login --username $user --password $pass --email $email $uri
 }
 
 req="
