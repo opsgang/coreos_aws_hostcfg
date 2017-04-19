@@ -88,6 +88,19 @@ _container_env_str() {
     echo "$str"
 }
 
+random_str_help() {
+    cat <<EOM
+usage: random_str
+... produces random-ish str (current datetime & unique num)
+Append to container names to avoid race conditions.
+EOM
+
+}
+
+random_str() {
+    echo $(date +'%Y%m%d%H%m%s')-$(( $(shuf -i 1-999999 -n1) * $(shuf -i 1-999999 -n1) ))
+}
+
 # e() / i() ... print log msg
 e() {
     echo "ERROR $SC: $*" >&2
