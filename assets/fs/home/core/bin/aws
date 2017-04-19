@@ -1,0 +1,85 @@
+# vim: et sr sw=4 ts=4 smartindent syntax=sh ft=sh:
+# ... to be sourced
+#
+aws_userdata_help() {
+    cat <<EOM
+usage: aws_userdata
+... prints userdata as provided on launch
+EOM
+
+}
+
+aws_userdata() {
+    curl -s $AWS_MD_URL/user-data
+    [[ $? -ne 0 ]] && e "no user-data" && return 1
+}
+
+aws_iam_help() {
+    cat <<EOM
+usage: aws_iam
+... prints instance's iam arn
+EOM
+
+}
+
+aws_iam() {
+    (   
+        set -o pipefail;
+        curl -s $AWS_MD_URL/meta-data/iam/info | jq -r '.InstanceProfileArn'
+    )
+    [[ $? -ne 0 ]] && e "no iam" && return 1
+}
+
+aws_region_help() {
+    cat <<EOM
+usage: aws_region
+... prints instance's aws region
+EOM
+
+}
+
+aws_region() {
+    (   
+        set -o pipefail;
+        curl -s $AWS_MD_URL/dynamic/instance-identity/document \
+        | jq -r .availabilityZone | sed -e 's/[a-c]$//'
+    )
+    [[ $? -ne 0 ]] && e "no region" && return 1
+}
+
+aws_env_to_docker_help() {
+    cat <<EOM
+usage: aws_env_to_docker_help
+... makes --env str from creds-related / region AWS_* exported vars. 
+They must be exported before calling this function.
+Ideally use an IAM instead though ... just a thought.
+EOM
+
+}
+
+aws_env_to_docker() {
+    local s=""
+    local vars="
+        AWS_ACCESS_KEY_ID
+        AWS_DEFAULT_PROFILE
+        AWS_DEFAULT_REGION
+        AWS_SECRET_ACCESS_KEY
+        AWS_SESSION_TOKEN
+    "
+    vars=$( echo "$vars" | sed -e '/^$/d' -e 's/^ \+//' -e 's/ \+$//' | sort)
+
+    # ... AWS_* vars exported to env (not only in local env)
+    local exported_vars=$(export | grep '^AWS_')
+
+    aws_vars=$(comm -12 <(echo "$vars") <(echo "$exported_vars"))
+
+    for v in $aws_vars; do
+        if [[ ! -z "${!v}" ]]; then
+            s="--env $v $s"
+        fi
+    done
+
+    # print str with trailing whitespace removed
+    echo "${s%"${s##*[![:space:]]}"}"
+}
+

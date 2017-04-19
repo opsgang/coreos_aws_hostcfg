@@ -1,0 +1,122 @@
+#!/bin/bash
+# vim: et sr sw=4 ts=4 smartindent syntax=sh:
+#
+# aws_s3_cp
+#
+# Wrapper script to provide aws s3 cp subcommand
+#
+# (... useful to copy files to and from coreos host)
+#
+if ! . /home/core/bin/common.inc >/dev/null 2>&1
+then
+    echo "ERROR $0: ... couldn't source /home/core/bin/common.inc"
+    exit 1
+fi
+
+CMD=aws_s3_cp
+CONTAINER_NAME="${CONTAINER_NAME:-${CMD}_$(random_str)}"
+DI="${DI_S3_CP:-opsgang/coreos_aws_hostcfg:stable}"
+VOL_OPTS=
+
+AWS_ENV_VARS=$(aws_env_to_docker)
+
+usage() {
+    echo "USAGE: aws_s3_cp [--options for aws s3 cp subcommand] <SRC> <DEST>"
+}
+
+local_abs_path() {
+    local path="$1"
+    if [[ $path == s3://* ]]; then
+        echo "$path"
+    else
+        # ... don't expand symlink first
+        realpath -s $path
+    fi
+}
+
+path_to_volstr() {
+    path="$1"
+
+    # ... only interested in local paths
+    [[ $path == s3://* ]] && return 0
+
+    dir_in_container="/home/core/$CONTAINER_NAME"
+
+    # ... if local path is a dir, we can mount it
+    if [[ -d $path ]]; then
+        path_to_mount="$path"
+    else
+        path_to_mount="$(dirname $path)"
+    fi
+
+    echo "-v $path_to_mount:$dir_in_container"
+}
+
+to_container_path() {
+    path="$1"
+
+    # ... only interested in local paths
+    if [[ $path == s3://* ]]; then
+        echo "$path"
+        return 0
+    fi
+
+    dir_in_container="/home/core/$CONTAINER_NAME"
+
+    # ... if local path is a dir, we can mount it
+    if [[ -d $path ]]; then
+        path_in_container=$dir_in_container
+    else
+        path_in_container="$dir_in_container/$(basename $path)"
+    fi
+
+    echo "$path_in_container"
+}
+
+SRC="${@:(-2):1}"
+DEST="${@:(-1):1}"
+
+if [[ $SRC != s3://* ]] && [[ $DEST != s3://* ]]; then
+    e "Either SRC or DEST must be an s3:// uri"
+    usage && exit 1
+fi
+
+if [[ $SRC == -* ]] || [[ $DEST == -* ]]; then
+    e "Your last two args must be SRC and DEST."
+    e "Please specify options before these."
+    usage && exit 1
+fi
+
+# ... use absolute paths for local path, so we can
+#     mount vol correctly
+SRC=$(local_abs_path "${@:(-2):1}")
+DEST=$(local_abs_path "${@:(-1):1}")
+
+VOL_OPTS="$(path_to_volstr "$SRC") $(path_to_volstr "$DEST")"
+
+HOST_SRC=$SRC
+HOST_DEST=$DEST
+
+# ... change local path to one appropriate to container
+SRC="$(to_container_path "$SRC")"
+DEST="$(to_container_path "$DEST")"
+
+OPTS=("$@")
+unset "OPTS[${#OPTS[@]}-1]"
+unset "OPTS[${#OPTS[@]}-1]"
+
+docker run -i               \
+    --name $CONTAINER_NAME  \
+    --rm                    \
+    $VOL_OPTS $AWS_ENV_VARS \
+        $DI aws s3 cp ${OPTS[*]} "$SRC" "$DEST"
+
+if [[ $? -ne 0 ]]; then
+    e "... failed cp. Will force-remove container if still around"
+    docker rm -f $CONTAINER_NAME 1>/dev/null 
+    exit 1
+else
+    i "... copied ${OPTS[*]} $HOST_SRC to $HOST_DEST"
+    exit 0
+fi
+

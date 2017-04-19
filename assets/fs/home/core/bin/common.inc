@@ -49,45 +49,6 @@ required_vars() {
     return $rc
 }
 
-container_as_cmd_help() {
-    cat <<EOM
-usage: container_as_cmd <cmd to emulate> <arg1> <arg2> ...
-... wrapper to run container as if it were a binary.
-You must define CONTAINER_NAME and TAGGED_IMG before use.
-Optionally, CONTAINER_ENV="SOME_VAR OTHER_VAR", to pass vars from your env.
-e.g.
-    export CONTAINER_ENV="AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY";
-    export CONTAINER_NAME=boo; export TAGGED_IMG=opsgang/aws_env:stable;
-    container_as_cmd aws ec2 describe-instances
-    container_as_cmd credstash -r eu-west-1 -t secrets get MY_SECRET
-EOM
-
-}
-
-container_as_cmd() {
-
-    local cmd_args="$@"
-    local env_opts=""
-    if [[ ! -z "$CONTAINER_ENV" ]]; then
-        env_opts=$(_container_env_str)
-    fi
-
-    required_vars "CONTAINER_NAME TAGGED_IMG" || return 1
-    sudo docker kill $CONTAINER_NAME >/dev/null 2>&1
-    sudo docker rm -f $CONTAINER_NAME >/dev/null 2>&1
-
-    sudo -E docker run --name $CONTAINER_NAME --rm $env_opts $TAGGED_IMG $cmd_args
-}
-
-# _container_env_str(): constructs --env str from list in $CONTAINER_ENV
-_container_env_str() {
-    for varname in $CONTAINER_ENV; do
-        str="$str --env $varname"
-    done
-
-    echo "$str"
-}
-
 random_str_help() {
     cat <<EOM
 usage: random_str
@@ -98,7 +59,7 @@ EOM
 }
 
 random_str() {
-    echo $(date +'%Y%m%d%H%m%s')-$(( $(shuf -i 1-999999 -n1) * $(shuf -i 1-999999 -n1) ))
+    date +"%Y%m%d%H%m%s-$(( $(shuf -i 1-999999 -n1) * $(shuf -i 1-999999 -n1) ))"
 }
 
 # e() / i() ... print log msg
