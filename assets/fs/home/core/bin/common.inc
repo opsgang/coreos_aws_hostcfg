@@ -14,7 +14,7 @@ _set_SC() {
     if [[ $0 =~ ^-?bash$ ]]; then
         echo "bash"
     else
-        basename $(realpath $0)
+        basename $(realpath -- $0)
     fi
 }
 
