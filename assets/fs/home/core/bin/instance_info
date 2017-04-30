@@ -32,28 +32,27 @@ if [[ -z "$AWS_DOC" ]]; then
     exit 1
 fi
 
-AWS_INSTANCE_ID=$(echo "$AWS_DOC" | grep '^[ ]\+"instanceId"'   | awk -F\" '{print $4}')
-AWS_DEFAULT_REGION=$(echo "$AWS_DOC" | grep '^[ ]\+"region"'       | awk -F\" '{print $4}')
+AWS_INSTANCE_ID=$(echo "$AWS_DOC" | grep '^[ ]\+"instanceId"' | awk -F\" '{print $4}')
+AWS_DEFAULT_REGION=$(echo "$AWS_DOC" | grep '^[ ]\+"region"'  | awk -F\" '{print $4}')
 
 # ... aws tag names can contain chars that are not valid bash var names
 # so they need some care, attention and unforgiving mangling before adding
 # to $INFO_FILE
-AWS_TAGS=$(                                                   \
+AWS_TAGS="$(
     aws --region $AWS_DEFAULT_REGION ec2 describe-tags        \
         --filters "Name=resource-type,Values=instance"        \
                   "Name=resource-id,Values=$AWS_INSTANCE_ID"  \
-        --query "Tags[*].{Value:Value,Key:Key}" --output=text \
-    | sed -e 's/^\([^ \t]\+\)[ \t]\+\([^ \t]\+\)/\U\1\E=\2/'  \
-          -e 's/^\(NAME=\)/AWS_\1/'                           \
-)
+        --query "Tags[*].{Value:Value,Key:Key}" --output text \
+)"
 
 # ... make tag name a valid var name e.g. [A-Za-z0-9_]+
-MASSAGED_TAGS=
-for tag_val in $(echo "$AWS_TAGS"); do
-    tag=$(echo "$tag_val" | sed -e 's/^\([^=]\+\)=.*/\1/' -e 's/ //g' -e 's/[^A-Z0-9_]/_/g' )
-    val=$(echo "$tag_val" | sed -e 's/^[^=]\+=\(.*\)$/\1/' )
+MASSAGED_TAGS=""
+while read -r line; do
+    read -r tag val <<< $line
+    tag=$(echo "${tag^^}" | sed -e 's/[^-A-Z0-9]/_/g')
+    val=$(echo "${val}" | sed -e 's/[\ ="]/__/g' -e "s/'//g")
     MASSAGED_TAGS=$(echo -e "$tag=$val\n$MASSAGED_TAGS")
-done
+done <<< "$AWS_TAGS"
 SORTED_TAGS=$(echo "$MASSAGED_TAGS" | sort)
 
 cat << EOF >$INFO_FILE

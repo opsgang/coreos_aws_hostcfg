@@ -1,6 +1,7 @@
 # vim: et sr sw=4 ts=4 smartindent syntax=sh ft=sh:
 # ... to be sourced
 #
+export AWS_MD_URL='http://169.254.169.254/latest'
 aws_userdata_help() {
     cat <<EOM
 usage: aws_userdata
