@@ -1,7 +1,6 @@
 # list of credstash dynamodb tables
 # ... values in later tables take precedence.
-credstash-shared
-credstash-shared-$ENV
+credstash-defaults
 credstash-$PRODUCT
 credstash-$PRODUCT-$ENV
 credstash-$PRODUCT-$ENV-$ROLE

@@ -1,0 +1,124 @@
+#!/bin/bash
+# vim: et sr sw=4 ts=4 smartindent:
+#
+# set_up_ssh_keys
+#
+# expected env:
+# SSH_USERS: str-list of user names who are to receive these keys
+#            Default: 'root core'
+#
+# SSH_KEY_*: name must be a key in a credstashed value retrievable
+#            via credstash_get. Credstashed value should be the private
+#            key content. Value of the env var should be the name of
+#            the file to create e.g. id_rsa or id_rsa-my-special-key etc ...
+#
+# SSH_VAR_PATTERN: which env vars are lookup keys in credstash for ssh key content.
+#
+# For each user in SSH_USERS, every SSH_KEY_ is generated and appropriate perms
+# are set.
+#
+if ! . /home/core/bin/common.inc >/dev/null 2>&1
+then
+    echo "ERROR $0: couldn't source /home/core/bin/common.inc" >&2
+    exit 1
+fi
+
+user_exists() {
+    local u="$1"
+    if ! id $u>/dev/null 2>&1
+    then
+        e "... user $u not found. Will skip."
+        return 1
+    fi
+
+    return 0
+}
+
+user_home_dir() {
+    local u="$1"
+    h=$(eval echo ~${u})
+    if [[ "$h" == "~${u}" ]] || [[ -z "$h" ]]; then
+        e "... user $u has no homedir"
+        return 1
+    else
+        echo "$h"
+        return 0
+    fi
+}
+
+user_ssh_dir() {
+    local u="$1" # user name (also assumed to be group name)
+    local d="$2" # .ssh dir
+    mkdir -p $d 2>/dev/null
+    [[ ! -d $d ]]    && e "$d exists but not a directory"  && return 1
+    [[ ! -w $d ]]    && e "$d not writable"                && return 1
+    ! chmod 0700 $d  && e "can't correct perms on $d"      && return 1
+    ! chown $u:$u $d && e "can't change owner:group on $d" && return 1
+    return 0
+}
+
+ssh_key_vars_list() {
+    local p="$1"
+    v="$(compgen -v | grep "${p}")"
+    if [[ $? -ne 0 ]] || [[ -z "$v" ]];
+    then
+        i "... no env vars matching grep-pattern $p" >&2
+        i "... Nothing more to do." >&2
+        return 1
+    else
+        echo "$v"
+        return 0
+    fi
+
+}
+
+get_key() {
+    local v="$1" # to lookup in credstash (== ssh_key var name)
+    ssh_key=$(credstash_get $v)
+    if [[ $? -ne 0 ]] || [[ -z "$ssh_key" ]]; then
+        e "No value found for credstashed key $v"
+        e "Is the value in a table listed in /etc/custom/.credstash/tables?"
+        return 1
+    else
+        echo "$ssh_key"
+        return 0
+    fi
+}
+
+write_key() {
+    local k="$1"
+    local f="$2"
+    ! echo "$k" > $f && e "... could not write key to $f"  && return 1
+    ! chmod 0600 $f  && e "can't correct perms on $f"      && return 1
+    ! chown $u:$u $f && e "can't change owner:group on $f" && return 1
+    return 0
+}
+
+SSH_VAR_PATTERN="${SSH_VAR_PATTERN:-^SSH_KEY_}"
+SSH_USERS="${SSH_USERS:-root core}"
+
+
+VARS="$(ssh_key_vars_list "$SSH_VAR_PATTERN")" || exit 0
+
+rc=0
+for u in $SSH_USERS; do
+    i "... checking $u exists"
+    ! user_exists $u && rc=1 && continue
+
+    i "... getting user's homedir"
+    h=$(! user_home_dir $u) && rc=1 && continue
+
+    d="$h/.ssh"
+    i "... creating $h/.ssh dir if needed"
+    ! user_ssh_dir "$u" "$d" && rc=1 && continue
+
+    for var in $VARS; do
+        i "... getting credstashed key value for $var"
+        ! k="$(get_key $var)" && rc=1 && continue
+
+        i "... writing key $var to $d/${!var}"
+        ! write_key "$k" "$d/${!var}" && rc=1 && continue
+    done
+done
+
+exit $rc
