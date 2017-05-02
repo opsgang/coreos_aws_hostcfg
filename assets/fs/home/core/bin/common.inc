@@ -74,26 +74,26 @@ i() {
 # MAIN
 
 _do_common() {
-	export PATH=$PATH:/home/core/bin
-	FUNC_DIR=/home/core/bin/functions.d
-	SC=$(_set_SC)
-	FILES_TO_SRC="
-		/etc/custom/instance_info
-		/etc/custom/versions
-	"
+    export PATH=$PATH:/home/core/bin
+    FUNC_DIR=/home/core/bin/functions.d
+    SC=$(_set_SC)
+    FILES_TO_SRC="
+        /etc/custom/instance_info
+        /etc/custom/versions
+    "
 
-	# ... src useful stuff in to env
-	for file_to_src in $FILES_TO_SRC; do
-		if [[ -r $file_to_src ]]; then
-			i "... sourcing $file_to_src"
-			. $file_to_src
-		fi
-	done
+    # ... src useful stuff in to env
+    for file_to_src in $FILES_TO_SRC; do
+        if [[ -r $file_to_src ]]; then
+            i "... sourcing $file_to_src"
+            . $file_to_src
+        fi
+    done
 
-	for func_file in $(ls -1 $FUNC_DIR/* 2>/dev/null); do
-		. $func_file
-	done
-	unset func_file file_to_src FUNC_DIR FILES_TO_SRC
+    for func_file in $(ls -1 $FUNC_DIR/* 2>/dev/null); do
+        . $func_file
+    done
+    unset func_file file_to_src FUNC_DIR FILES_TO_SRC
 }
 
 _do_common ; unset _do_common
