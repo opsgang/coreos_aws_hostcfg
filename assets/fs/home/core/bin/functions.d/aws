@@ -11,8 +11,8 @@ EOM
 }
 
 aws_userdata() {
-    curl -s $AWS_MD_URL/user-data
-    [[ $? -ne 0 ]] && e "no user-data" && return 1
+    curl -s $AWS_MD_URL/user-data | gunzip -f
+    [[ $? -ne 0 ]] && e "no user-data or bad gzip" && return 1
 }
 
 aws_iam_help() {

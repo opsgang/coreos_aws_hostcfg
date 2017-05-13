@@ -72,10 +72,9 @@ _print_helper_msg() {
 if [[ $- == *i* ]]; then
     _print_helpers
 
-    # user can provide ~.ps1 file with a set_prompt function
-    if [[ -r ~/.ps1 ]]; then
-        . ~/.ps1 2>/dev/null
-        set_prompt
-    fi
+    # user can provide ~.ps1 file with a set_prompt function that sets PS1
+    [[ -r ~/.ps1 ]] && . ~/.ps1 2>/dev/null && declare -f set_prompt >/dev/null && set_prompt
+
+    return 0
 fi
 
