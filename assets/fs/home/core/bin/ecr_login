@@ -25,6 +25,7 @@ docker_run() {
     l=$(
         docker run -t --name aa --rm $I \
             aws ecr --region $r get-login \
+                --no-include-email \
                 --registry-ids $ids | sed -e 's/\r//g'
     )
     rc=$?
