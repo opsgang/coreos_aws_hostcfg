@@ -14,8 +14,12 @@
 #
 # SSH_VAR_PATTERN: which env vars are lookup keys in credstash for ssh key content.
 #
+# SSH_CONFIG: path to file to copy to ~<user>/.ssh/config (mode:0600)
+#
 # For each user in SSH_USERS, every SSH_KEY_ is generated and appropriate perms
 # are set.
+#
+# Optionally, SSH_CONFIG defines an ssh config to use for each user
 #
 if ! . /home/core/bin/common.inc >/dev/null 2>&1
 then
@@ -54,6 +58,18 @@ user_ssh_dir() {
     [[ ! -w $d ]]    && e "$d not writable"                && return 1
     ! chmod 0700 $d  && e "can't correct perms on $d"      && return 1
     ! chown $u:$u $d && e "can't change owner:group on $d" && return 1
+    return 0
+}
+
+user_ssh_config() {
+    local f="$1" # config file to copy over
+    local u="$2" # user's uid or name
+    local d="$3" # .ssh dir
+    local c="$d/config"
+    [[ ! -r $f ]] && e "$f not readable" && return 1
+    ! cp $f $c && e "could not copy $f to $c" && return 1
+    ! chmod 0600 $c  && e "can't correct perms on $c" && return 1
+    ! chown $u:$u $c && e "can't change owner:group on $c to $u" && return 1
     return 0
 }
 
@@ -111,6 +127,11 @@ for u in $SSH_USERS; do
     d="$h/.ssh"
     i "... creating $h/.ssh dir if needed"
     ! user_ssh_dir "$u" "$d" && rc=1 && continue
+
+    if [[ ! -z $SSH_CONFIG ]]; then
+        i "... installing $SSH_CONFIG as .ssh/config file"
+        ! user_ssh_config "$SSH_CONFIG" "$u" "$d" && rc=1 && continue
+    fi
 
     for var in $VARS; do
         i "... getting credstashed key value for $var"
