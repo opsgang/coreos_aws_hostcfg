@@ -12,15 +12,11 @@
 #
 . /home/core/bin/common.inc >/dev/null || exit 1
 
-# ... set DI_ECR_LOGIN in 'versions' to use custom docker image
-# to run get-login.
-# - defaults to opsgang/coreos_aws_hostcfg:stable
-. /etc/custom/versions 2>/dev/null
-
 docker_run() {
     rc=0
     local r="$1"   # aws region
     local ids="$2" # ids
+    local docker_users="$3" # users on host to log in
 
     l=$(
         docker run -t --name aa --rm $I \
@@ -34,8 +30,8 @@ docker_run() {
 
     [[ $rc -eq 0 ]] || return 1
 
-    for u in core root; do
-        i "... ecr login for user: core"
+    for u in $docker_users; do
+        i "... ecr login for user: $u"
         while read -r line; do
             sudo -u $u $line || rc=1
         done < <(echo "$l")
@@ -45,8 +41,11 @@ docker_run() {
 
 }
 
+# ... set DI_ECR_LOGIN in env to use custom image
 I=${DI_ECR_LOGIN:-opsgang/coreos_aws_hostcfg:stable}
 CONTAINER_NAME=${CONTAINER_NAME:-ecr_login}
+
+DOCKER_USERS="${DOCKER_USERS:-core root}"
 
 f=/etc/custom/ecr_accounts
 if [[ ! -r $f ]]; then
@@ -67,12 +66,10 @@ while read -r line; do
         i "... skipped line [$line]"; continue
     fi
 
-    docker_run $reg "$ids" || rc=1
+    docker_run $reg "$ids" "$DOCKER_USERS" || rc=1
 done < "$f"
 
-if [[ $rc -ne 0 ]]; then
-    e "... failed some or all desired logins to ecr"
-fi
+[[ $rc -ne 0 ]] && e "... failed some or all desired logins to ecr"
 
 exit $rc
 

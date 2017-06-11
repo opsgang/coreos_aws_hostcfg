@@ -15,6 +15,8 @@
 
 . /home/core/bin/common.inc >/dev/null || exit 1
 
+export DOCKER_USERS="${DOCKER_USERS:-core root}"
+
 do_login() {
     local host_user="$1"
     local user=$ARTIFACTORY_USER
@@ -28,12 +30,13 @@ req="
     ARTIFACTORY_USER
     ARTIFACTORY_PASSWORD
     ARTIFACTORY_URI
+    DOCKER_USERS
 "
 
 required_vars "$req" || exit 1
 
 rc=0
-for host_user in core root; do
+for host_user in $DOCKER_USERS; do
     if ! do_login $host_user
     then
         e "... failed: $ARTIFACTORY_USER@$ARTIFACTORY_URI"
