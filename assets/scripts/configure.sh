@@ -3,15 +3,7 @@
 #
 # - the systemd job should be set up via user-data - see USER-DATA.example.md
 # - container should mount /etc/ and /home/core
-# - add all fs assets to coreos:
-#     - homedir assets for core user (includes /home/core/bin)
-#     - reboot strategy - off by default
-#     - gets instance info to /etc/custom/instance_info
-#     - systemd files for:
-#       - instance_info,
-#       - credstash_to_fs,
-#       - docker network,
-#       - papertrail
+# - adds all fs assets to coreos
 echo "INFO $0: copying all fs assets to host"
 # N.B - this cp won't work with any dot files directly
 # under /assets/fs ... (e.g. /assets/fs/.somefile -> failure)
