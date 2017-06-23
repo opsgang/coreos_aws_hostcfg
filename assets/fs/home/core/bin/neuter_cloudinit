@@ -15,7 +15,7 @@ if [[ -r /usr/share/oem/cloud-config.yml ]]; then
     SERVICE_FILE=/usr/share/oem/cloud-config.yml
 else
     # ... for versions of coreos stable from 1409.2.0
-    SERVICE_FILE=/etc/system/systemd/oem-cloudinit.service
+    SERVICE_FILE=/etc/systemd/system/oem-cloudinit.service
 fi
 
 # pattern to match and replacement
