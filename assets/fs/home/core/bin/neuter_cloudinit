@@ -1,0 +1,26 @@
+#!/bin/bash
+# vim: et sr sw=4 ts=4 smartindent:
+#
+# /home/core/bin/neuter_cloudinit
+#
+# CoreOS cloudinit will run again after each reboot of the host.
+#
+# If you have not moved over to ignition, this may be undesirable.
+#
+# Call this script with superuser privileges and it'll stop the oem-cloudinit.service
+# from doing any more damage.
+#
+if [[ -r /usr/share/oem/cloud-config.yml ]]; then
+    # ... for earlier versions of coreos
+    SERVICE_FILE=/usr/share/oem/cloud-config.yml
+else
+    # ... for versions of coreos stable from 1409.2.0
+    SERVICE_FILE=/etc/system/systemd/oem-cloudinit.service
+fi
+
+# pattern to match and replacement
+p='ExecStart=/usr/bin/coreos-cloudinit.*'
+r='ExecStart=/usr/bin/echo coreos-cloudinit: already run on first boot. Skipping.'
+sed -i "s#${p}#${r}#" ${SERVICE_FILE}
+
+grep "$r" $SERVICE_FILE >/dev/null
