@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# new_local_etcd2
+#
+# - forces a new etcd2 cluster
+#   - DOES NOT PRESERVE any information in /etcd2
+#
+# Intended when you do not use etcd2 to preserve state
+# and a local etcd is sufficient e.g. just for locksmithd / update-engine.
+#
+# As systemd unit, this should only be run on boot.
+# Should be set to run 'Before' etcd2
+#
+# This script is useful on AWS EC2 instances, when etcd2 can fail
+# to restart after a reboot. (This can prevent locksmithd from working)
+#
+CLOUDINIT_CONF=/run/systemd/system/etcd2.service.d/20-cloudinit.conf
+TMP_SYSTEMD_FILE=/run/systemd/system/etcd2.service.d/98-force-new-cluster.conf
+
+echo "INFO $0: ... stopping etcd2"
+sudo systemctl stop etcd2 2>/dev/null
+
+echo "INFO $0: ... creating tmp systemd file $TMP_SYSTEMD_FILE"
+cat << EOM > $TMP_SYSTEMD_FILE
+[Service]
+Environment="ETCD_FORCE_NEW_CLUSTER=true"
+EOM
+
+if [[ -e "${CLOUDINIT_CONF}" ]]; then
+    echo "INFO $0: ... deleting existing etcd cluster info created by cloudinit"
+    rm $CLOUDINIT_CONF
+fi
+
+echo "INFO $0: ... reloading systemd config"
+sudo systemctl daemon-reload
+
+echo "INFO $0: ... starting up, forcing new cluster"
+sudo systemctl start etcd2
+
+sleep 3
+
+echo "INFO $0: ... verifying new cluster ..."
+if ! etcdctl cluster-health | grep 'cluster is healthy'
+then
+    echo "$0 ERROR: couldn't reform single node cluster for etcd2."
+    exit 1
+fi
+
+echo "INFO $0: ... removing tmp config $TMP_SYSTEMD_FILE"
+rm -rf $TMP_SYSTEMD_FILE
+
+echo "INFO $0: ... reloading systemd config"
+sudo systemctl daemon-reload
+
+exit 0
+
